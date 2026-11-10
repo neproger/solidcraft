@@ -6,6 +6,8 @@ Created: 2026-11-10
 Source research: `https://github.com/neproger/solidcore/tree/research/aoim-line-arc` at `9920e32`
 Related code: `crates/solidcore/src/primitive/primitive_creation/p2/planar_path.rs`
 Related reference: `docs/procedural-sweep.md`
+Stage 0 result: `plan/analytical-miter-stage0.md`
+Development journal: `plan/analytical-miter-journal.md`
 
 ## Why this file exists
 
