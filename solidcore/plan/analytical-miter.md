@@ -96,6 +96,7 @@ The final result is a correct miter on the test matrix below, not merely a valid
 | Using `brep_intersect_mut` to recover the seam | That is post-hoc geometry |
 | Building our own B-rep kernel, Wire/Face/Shell/Solid builders | SolidCore owns this |
 | Extending Union Sweep to serve the analytical miter | Production Union already exists |
+| Building a new Sweep or B-rep pipeline from scratch | SolidCore's existing pipeline is the base; only the joint construction changes |
 | Rewriting the reference `create_sweep_along_planar_path` | It stays an independent behavioural reference |
 | Treating a valid topology as proof of a correct miter | Validity is not geometric correctness |
 
@@ -134,6 +135,7 @@ later milestones.
   it as try-then-fallback instead of a construction chosen from the geometry.
 - Changing one of the fixed decisions above, adding a construction to the pilot, or mixing
   constructions inside one path.
+- Replacing the existing SolidCore Sweep pipeline instead of changing its joint construction.
 
 ## Rules
 
@@ -168,6 +170,7 @@ research.
 | Profile generalization | Its own milestone, not part of the pilot. B-splines, several contours, holes, offset topology, self-intersections and split/merge need separate criteria. Line-Arc and the simple polygon remain the validated base. |
 | 3D target | Path-frame planar Sweep: the profile carried along the planar path in its local frames. `Sweep3D` is an independent cross-check only; a fixed global-Z extrusion is not the production basis. |
 | Joint Classifier | Mandatory Stage 0 result. It selects exactly one construction before geometry and returns an explicit error if that construction cannot be built. It never tries the next strategy. |
+| Implementation base | SolidCore's existing planar Sweep pipeline (`create_sweep_along_planar_path`): profile placement, per-segment sweep, trim, stitch, classification and B-rep construction are reused. Only the joint construction changes. No new Sweep or B-rep pipeline. |
 
 ### Stage 0: disposition, classifier and boundary (no code)
 
@@ -206,11 +209,17 @@ Preliminary disposition:
 
 ### Stage 2: pilot in the existing planar Sweep
 
-This is not a profile-generalization stage. Reuse the implementation already started; replace
-the joint construction, not the whole pipeline.
+This is not a profile-generalization stage and not a new Sweep method. The base is SolidCore's
+existing `create_sweep_along_planar_path`: profile placement, per-segment sweep, `trim_both`,
+stitch, classification and B-rep construction stay. Change only the joint cutting geometry and
+the minimal interface that passes the prepared seam to it.
 
-- Do not modify `create_sweep_along_planar_path_union` in place. The pilot is a separate
-  research entry point that reuses the existing pipeline; Union stays untouched.
+- Do not rewrite `create_sweep_along_planar_path` in place and do not modify
+  `create_sweep_along_planar_path_union`. The pilot is a separate research entry point that
+  reuses the existing pipeline; the reference stays the control and Union stays untouched. Union
+  is a separate result, not the pilot base.
+- In kernel integration the change lands in the one construction, not as a permanent parallel
+  copy. The parallel entry point is a research tool.
 - Supported: planar paths of lines and arcs with inflected line-arc joints (and line-line). Use
   `Analytical` where the offset domain is valid and `HybridAtJunction` where it is not.
 - Continuing-turn joints are covered only where the AOIM domain is valid. Where it is not, the
