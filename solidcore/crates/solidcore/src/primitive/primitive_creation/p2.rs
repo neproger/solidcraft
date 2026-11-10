@@ -32,6 +32,8 @@ mod access;
 mod blend;
 mod curve_sweeps;
 mod planar_path;
+mod planar_path_hybrid;
+mod planar_path_union;
 mod rotational;
 mod skin;
 mod taper;
