@@ -172,6 +172,23 @@ research.
 | Joint Classifier | Mandatory Stage 0 result. It selects exactly one construction before geometry and returns an explicit error if that construction cannot be built. It never tries the next strategy. |
 | Implementation base | SolidCore's existing planar Sweep pipeline (`create_sweep_along_planar_path`): profile placement, per-segment sweep, trim, stitch, classification and B-rep construction are reused. Only the joint construction changes. No new Sweep or B-rep pipeline. |
 
+### Research still needed
+
+The Line–Arc algebra is settled. The remaining research is:
+
+1. **Joint Classifier** (Stage 0): joint type, AOIM domain validity, `sign(t(d))`, continuation
+   direction, path-change permission, profile applicability; one construction per path or an
+   explicit error.
+2. **Path-frame 3D joint geometry** (Stage 2): express the seam and clipping in the profile's
+   local frames along the path, not in a fixed global-Z extrusion.
+3. **Seam realization in the existing pipeline** (Stage 0 decision, exercised in Stage 3):
+   whether `trim_both` can take the AOIM seam, or the joint uses direct shared topology while
+   the rest of the pipeline stays.
+4. **Continuing-turn at an invalid AOIM domain**: no validated construction yet; `Unsupported`
+   until a separate decision.
+5. **Independent validation** of the integrated body (Stage 5).
+6. **General profiles**: deferred milestone, not the pilot.
+
 ### Stage 0: disposition, classifier and boundary (no code)
 
 - Classify each module of `research/aoim-line-arc/src` and of the existing planar Sweep work:
@@ -182,6 +199,10 @@ research.
     applicability;
   - output: exactly one construction per path, or an explicit `Unsupported` error;
   - the decision is an event of the input geometry, never an exception or a retry.
+- Decide the seam interface: whether `trim_both` can take the AOIM seam, or the joint uses direct
+  shared topology while the rest of the pipeline stays. Record the minimal interface either way.
+- Write the path-frame 3D formulation plan: how the joint seam and clipping are expressed in the
+  profile's local frames.
 - Fix the research/production boundary: the pilot stays research; Union stays production.
 - Plan the transfer of mathematical components only. Do not transfer the standalone
   `Point2`/`Point3`, the mesh builders or the experimental region builders.
@@ -207,7 +228,16 @@ Preliminary disposition:
 - Keep `Analytical`, `HybridAtJunction` and `ContinuingLineArc`.
 - One construction is selected from geometry; no trial sequence.
 
-### Stage 2: pilot in the existing planar Sweep
+### Stage 2: path-frame joint geometry in 3D
+
+- Target is the profile carried along the planar path in its local frames, not a fixed global-Z
+  extrusion.
+- Express the AOIM seam and clipping in that geometry; compute them before building any sweep
+  body.
+- The research's 3D prism and `Sweep3D` are independent cross-checks only.
+- Output is the seam/clipping contract the pilot consumes, not a B-rep.
+
+### Stage 3: pilot in the existing planar Sweep
 
 This is not a profile-generalization stage and not a new Sweep method. The base is SolidCore's
 existing `create_sweep_along_planar_path`: profile placement, per-segment sweep, `trim_both`,
@@ -220,6 +250,8 @@ the minimal interface that passes the prepared seam to it.
   is a separate result, not the pilot base.
 - In kernel integration the change lands in the one construction, not as a permanent parallel
   copy. The parallel entry point is a research tool.
+- The pilot consumes the Stage 2 seam contract; it does not recompute the seam with post-hoc
+  intersections.
 - Supported: planar paths of lines and arcs with inflected line-arc joints (and line-line). Use
   `Analytical` where the offset domain is valid and `HybridAtJunction` where it is not.
 - Continuing-turn joints are covered only where the AOIM domain is valid. Where it is not, the
@@ -232,18 +264,6 @@ the minimal interface that passes the prepared seam to it.
 - No rewrite of the existing Sweep and no new profile support (B-splines, holes, several
   contours). Those are the deferred milestone.
 
-### Deferred milestone: general profiles
-
-Separate research with its own criteria: B-splines, several contours, holes, offset topology,
-self-intersections, split/merge boundaries, geometric accuracy and topological correctness.
-Not part of the pilot.
-
-### Stage 3: joint geometry in 3D
-
-- Target is the path-frame planar Sweep, not a vertical extrusion.
-- Compute the joint boundary before building any sweep body.
-- Use `Sweep3D` only as an independent cross-check.
-
 ### Stage 4: SolidCore integration
 
 - Use the direct shared-topology path from `BREP_PLAN.md`: no Boolean and no internal seam face.
@@ -255,6 +275,9 @@ Not part of the pilot.
 
 - Independent oracle: boundaries, volume, manifoldness, gaps, self-intersections, and every
   construction the classifier can select.
+- Do not use the pilot's seam code as the oracle. For `HybridAtJunction`, the expected area and
+  volume change is part of that construction; measure against the selected construction as well
+  as the smooth pipe.
 - Keep the research's "not yet validated" list: holes, the general-rectangle residual,
   twisted/moving frames, true trimmed NURBS, B-rep sewing.
 - Do not claim volume or outward normals while `brep_volume` and `orient_trimmed_surfaces` are
@@ -263,6 +286,12 @@ Not part of the pilot.
   `TestClosureSplitRegion`, `query.brep::CalculateBoundingBox`, and
   `intersect.surface_drop_lib_p3::SmSurface::DropCurve`. They block validation, not the direction.
 
+### Deferred milestone: general profiles
+
+Separate research with its own criteria: B-splines, several contours, holes, offset topology,
+self-intersections, split/merge boundaries, geometric accuracy and topological correctness.
+Not part of the pilot.
+
 ## Per-stage review checklist
 
 - Which original sub-problem does this stage solve?
@@ -270,6 +299,7 @@ Not part of the pilot.
 - Does it preserve the profile's original shape for an arbitrary profile?
 - Does it avoid relying on post-hoc intersections of built bodies?
 - Is the success measurement independent of the implementation?
+- Does the change reuse the existing SolidCore pipeline, changing only the joint construction?
 - Does the path use exactly one construction, chosen before building?
 - Does an unsupported or ambiguous case return an explicit error instead of trying another
   strategy?
